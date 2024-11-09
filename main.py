@@ -1,10 +1,26 @@
-from typing import Optional
-
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Request, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+import random
+import csv
+import io
+import pandas as pd
+from datetime import datetime, timedelta
+import calendar
+import glob
+from fastapi.responses import StreamingResponse
+from typing import List, Optional
 
 app = FastAPI()
 
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
