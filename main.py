@@ -12,3 +12,14 @@ async def root():
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Optional[str] = None):
     return {"item_id": item_id, "q": q}
+
+@app.get("/api/consent_count")
+async def consent_count():
+    Bank = 63
+    TPAP = 25
+    RSAS = 12
+    return {
+        'Bank' : Bank,
+        'TPAP' : TPAP,
+        'RSAS' : RSAS
+    }
