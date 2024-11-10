@@ -112,10 +112,19 @@ async def create_merchant(merchant: Merchant):
     
 #delete merchant
 @app.delete("/merchants/{merchant_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_merchant(merchant_id : int):
+async def delete_merchant(merchant_id : str):
     for merchant in merchants :
         if merchant.merchant_id == merchant_id:
             merchants.remove(merchant)
             return{"message" : "Merchant deleted successfully"}
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Merchant not found")
+
+#update merchant
+@app.put("/merchants/{merchant_id}", response_model=Merchant)
+async def update_merchant(merchant_id: str, merchant: Merchant):
+    for i , existing_merchant in enumerate(merchants):
+        if existing_merchant.merchant_id == merchant_id:
+            merchants[i] = merchant
+            return merchant
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Merchant not found")
     
