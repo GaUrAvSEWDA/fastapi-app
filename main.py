@@ -102,3 +102,11 @@ merchants = [
 @app.get("/merchants", response_model=List[Merchant])
 async def get_merchants():
     return merchants
+
+#post merchants
+@app.post("/merchants", response_model= Merchant, status_code=status.HTTP_201_CREATED)
+async def create_merchant(merchant: Merchant):
+    merchant.merchant_id = len(merchants) + 1
+    merchants.append(merchant)
+    return merchant
+    
