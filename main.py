@@ -11,6 +11,7 @@ import calendar
 import glob
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
+import os
 
 app = FastAPI()
 
@@ -206,8 +207,8 @@ def load_excel_file(file_path):
         return pd.DataFrame()
 
 # Load bank and TPAP data
-file_path_bank = "./data/bank/data.xlsx"
-file_path_tpap = "./data/TPAP/TPAP.xlsx"
+file_path_bank = os.path.join(os.path.dirname(__file__), "data", "bank", "data.xlsx")
+file_path_tpap = os.path.join(os.path.dirname(__file__), "data", "TPAP", "TPAP.xlsx")
 df = load_excel_file(file_path_bank)
 df2 = load_excel_file(file_path_tpap)
 
