@@ -181,3 +181,130 @@ async def delete_user(user_id: int):
     users = [user for user in users if user.user_id!= user_id]
     return
     
+# Initialize global DataFrames
+df = pd.DataFrame()   # Placeholder for bank data
+df2 = pd.DataFrame()  # Placeholder for TPAP data
+
+# Function to load Excel file into DataFrame
+def load_excel_file(file_path):
+    try:
+        df = pd.read_excel(file_path, sheet_name=0)
+        if not df.empty:
+            print("Data loaded successfully")
+            return df
+        else:
+            print("Warning: The file is empty.")
+            return pd.DataFrame()
+    except pd.errors.EmptyDataError:
+        print("Warning: The file is empty.")
+        return pd.DataFrame()
+    except UnicodeDecodeError:
+        print("Error: Encoding issue with the file.")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Error processing the file: {e}")
+        return pd.DataFrame()
+
+# Load bank and TPAP data
+file_path_bank = "./data/bank/data.xlsx"
+file_path_tpap = "./data/TPAP/TPAP.xlsx"
+df = load_excel_file(file_path_bank)
+df2 = load_excel_file(file_path_tpap)
+
+# Convert DataFrame to CSV
+def dataframe_to_csv(df):
+    output = io.StringIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+    return output
+
+# Endpoint to download bank data as CSV
+@app.get("/api/download_data_bank")
+async def download_data_bank():
+    if df.empty:
+        raise HTTPException(status_code=404, detail="Bank data not available")
+    csv_data = dataframe_to_csv(df)
+    return StreamingResponse(csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=bank_data.csv"})
+
+# Endpoint to download TPAP data as CSV
+@app.get("/api/download_data_tpap")
+async def download_data_tpap():
+    if df2.empty:
+        raise HTTPException(status_code=404, detail="TPAP data not available")
+    csv_data = dataframe_to_csv(df2)
+    return StreamingResponse(csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=tpap_data.csv"})
+
+# Endpoint to retrieve consent data for banks
+@app.get("/consent_repository/bank")
+async def get_consent_data():
+    if df.empty:
+        return {"error": "Data not available"}
+    data = df.to_dict(orient="records")
+    response = [
+        {
+            "Bank_Name": row["Bank_Name"],
+            "total_Customers": row["total_Customers"],
+            "total_Consents": row["total_Consents"],
+            "withdraw_Consents": row["withdraw_Consents"]
+        }
+        for row in data
+    ]
+    return response
+
+# Endpoint to retrieve TPAP consent data
+@app.get("/consent_repository/tpap")
+async def get_tpap_consent_data():
+    if df2.empty:
+        return {"error": "TPAP data not available"}
+    tpap_data = df2.to_dict(orient="records")
+    response = [
+        {
+            "TPAP_Name": row["TPAP_Name"],
+            "total_Customers": row["total_Customers"],
+            "total_Consents": row["total_Consents"],
+            "withdraw_Consents": row["withdraw_Consents"]
+        }
+        for row in tpap_data
+    ]
+    return response
+
+# Endpoint to upload and merge bank data
+@app.post("/api/upload_data")
+async def upload_data(file: UploadFile = File(...)):
+    if not file.filename.endswith((".xls", ".xlsx")):
+        raise HTTPException(status_code=400, detail="File must be an Excel file")
+
+    contents = await file.read()
+    excel_df = pd.read_excel(io.BytesIO(contents))
+
+    required_columns = {"Bank_Name", "total_Customers", "total_Consents", "withdraw_Consents"}
+    if not required_columns.issubset(excel_df.columns):
+        raise HTTPException(status_code=400, detail=f"Excel file must contain columns: {', '.join(required_columns)}")
+
+    global df
+    df = pd.concat([df, excel_df], ignore_index=True).drop_duplicates(subset=["Bank_Name"], keep="last")
+    print("Updated DataFrame:", df)
+
+    return {"status": "success", "message": "Data uploaded and merged successfully"}
+
+# Endpoint to upload and merge TPAP data
+@app.post("/api/upload_data_tpap")
+async def upload_data_tpap(file: UploadFile = File(...)):
+    if not file.filename.endswith((".xls", ".xlsx")):
+        raise HTTPException(status_code=400, detail="File must be an Excel file")
+
+    contents = await file.read()
+    excel_df_tpap = pd.read_excel(io.BytesIO(contents))
+
+    required_columns_tpap = {"TPAP_Name", "total_Customers", "total_Consents", "withdraw_Consents"}
+    if not required_columns_tpap.issubset(excel_df_tpap.columns):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Excel file must contain columns: {', '.join(required_columns_tpap)}"
+        )
+
+    global df2
+    df2 = pd.concat([df2, excel_df_tpap], ignore_index=True).drop_duplicates(subset=["TPAP_Name"], keep="last")
+    print("Updated TPAP DataFrame:", df2)
+
+    return {"status": "success", "message": "TPAP data uploaded and merged successfully"}
