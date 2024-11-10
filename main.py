@@ -15,7 +15,7 @@ from typing import List, Optional
 app = FastAPI()
 
 origins=[
-    "http://localhost:3000/admin/main-dashboard"
+    "http://localhost:3000"
 ]
 app.add_middleware(
     CORSMiddleware,
