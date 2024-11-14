@@ -12,6 +12,8 @@ import glob
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 import os
+import pandasql as ps
+from pandasql import sqldf
 
 app = FastAPI()
 
@@ -309,3 +311,37 @@ async def upload_data_tpap(file: UploadFile = File(...)):
     print("Updated TPAP DataFrame:", df2)
 
     return {"status": "success", "message": "TPAP data uploaded and merged successfully"}
+
+# Endpoint to get column names
+@app.get("/get-column-names/")
+async def get_column_names():
+    if df.empty:
+        raise HTTPException(status_code=460, detail="File is empty or couldn't be processed.")
+    column_names = list(df.columns)
+    return {"column_names": column_names}
+
+# Model for SQL query input
+class SQLQuery(BaseModel):
+    query: str
+
+# Endpoint to execute an SQL query on the global DataFrame
+@app.post("/execute-sql/")
+async def execute_sql(query: SQLQuery):
+    global df  # Access the global DataFrame
+    if df is None or df.empty:
+        raise HTTPException(status_code=400, detail="File is empty or couldn't be processed.")
+    
+    try:
+        # Replace 'df' with the global dataframe name in the SQL query string
+        query_str = query.query.replace("df", "df")
+        
+        # Execute SQL query using pandasql
+        result_df = sqldf(query_str, globals())
+        
+        # Convert the result to a dictionary (JSON serializable)
+        result_dict = result_df.to_dict(orient='records')  # 'records' returns a list of dictionaries
+        
+        return {"result": result_dict}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to execute query: {str(e)}")
